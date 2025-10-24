@@ -95,3 +95,4 @@ blog_app/
 ## Customization
 You can customize the appearance by modifying the CSS in the base.html file or by adding new styles. The JavaScript files in each template can also be modified to change the behavior of the application.
 "# blog-app" 
+"# blog-app" 
