@@ -1,0 +1,3 @@
+Backend: Flask (Python web framework)
+Database: SQLite
+Frontend: HTML, Tailwind CSS, JavaScrip

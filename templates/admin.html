@@ -1,0 +1,172 @@
+{% extends "base.html" %}
+{% block title %}Admin Panel{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto">
+    <h1 class="text-3xl font-bold text-white mb-8">Admin Panel</h1>
+    
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <!-- Add Blog Form -->
+        <div class="bg-white rounded-lg shadow-lg p-6 animate-on-scroll">
+            <h2 class="text-xl font-bold text-gray-900 mb-4">Add New Blog Post</h2>
+            <form id="blog-form">
+                <div class="mb-4">
+                    <label for="title" class="block text-gray-700 font-medium mb-2">Title</label>
+                    <input type="text" id="title" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" required>
+                </div>
+                <div class="mb-4">
+                    <label for="author" class="block text-gray-700 font-medium mb-2">Author</label>
+                    <input type="text" id="author" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" value="Admin">
+                </div>
+                <div class="mb-4">
+                    <label for="summary" class="block text-gray-700 font-medium mb-2">Summary</label>
+                    <textarea id="summary" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" rows="3"></textarea>
+                </div>
+                <div class="mb-4">
+                    <label for="content" class="block text-gray-700 font-medium mb-2">Content</label>
+                    <textarea id="content" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" rows="6" required></textarea>
+                </div>
+                <button type="submit" class="w-full bg-indigo-600 text-white font-medium py-2 px-4 rounded-md hover:bg-indigo-700 transition duration-300">
+                    Publish Blog
+                </button>
+            </form>
+        </div>
+        
+        <!-- Existing Blogs -->
+        <div class="bg-white rounded-lg shadow-lg p-6 animate-on-scroll">
+            <h2 class="text-xl font-bold text-gray-900 mb-4">Existing Blog Posts</h2>
+            <div id="existing-blogs" class="space-y-4">
+                <!-- Blog posts will be loaded here -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Load existing blogs
+    async function loadExistingBlogs() {
+        try {
+            const response = await fetch('/api/blogs');
+            if (!response.ok) throw new Error('Failed to fetch blogs');
+            
+            const blogs = await response.json();
+            const container = document.getElementById('existing-blogs');
+            
+            if (blogs.length === 0) {
+                container.innerHTML = '<p class="text-gray-600 text-center py-4">No blogs found.</p>';
+                return;
+            }
+            
+            container.innerHTML = blogs.map(blog => `
+                <div class="border border-gray-200 rounded-md p-4 flex justify-between items-center">
+                    <div>
+                        <h3 class="font-medium text-gray-900">${blog.title}</h3>
+                        <p class="text-sm text-gray-600">By ${blog.author}</p>
+                    </div>
+                    <button onclick="deleteBlog(${blog.id})" class="text-red-600 hover:text-red-800">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            `).join('');
+        } catch (error) {
+            console.error('Error loading blogs:', error);
+            document.getElementById('existing-blogs').innerHTML = `
+                <div class="text-center py-4 text-red-600">
+                    Failed to load blogs. Please try again later.
+                </div>
+            `;
+        }
+    }
+    
+    // Delete blog function
+    async function deleteBlog(blogId) {
+        Swal.fire({
+            title: 'Are you sure?',
+            text: "You won't be able to revert this!",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#3085d6',
+            cancelButtonColor: '#d33',
+            confirmButtonText: 'Yes, delete it!'
+        }).then(async (result) => {
+            if (result.isConfirmed) {
+                try {
+                    const response = await fetch(`/api/blogs/${blogId}`, {
+                        method: 'DELETE'
+                    });
+                    
+                    if (!response.ok) throw new Error('Failed to delete blog');
+                    
+                    const resultData = await response.json();
+                    
+                    Swal.fire(
+                        'Deleted!',
+                        resultData.message,
+                        'success'
+                    );
+                    
+                    // Reload the blog list
+                    loadExistingBlogs();
+                } catch (error) {
+                    console.error('Error deleting blog:', error);
+                    Swal.fire(
+                        'Error!',
+                        'Failed to delete the blog. Please try again.',
+                        'error'
+                    );
+                }
+            }
+        });
+    }
+    
+    // Handle form submission
+    document.getElementById('blog-form').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const title = document.getElementById('title').value;
+        const author = document.getElementById('author').value;
+        const summary = document.getElementById('summary').value;
+        const content = document.getElementById('content').value;
+        
+        // If summary is empty, create one from the title
+        const finalSummary = summary || (title.length > 100 ? title.substring(0, 100) + '...' : title);
+        
+        try {
+            const response = await fetch('/api/blogs', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ title, author, summary: finalSummary, content })
+            });
+            
+            if (!response.ok) throw new Error('Failed to create blog');
+            
+            const result = await response.json();
+            
+            Swal.fire({
+                icon: 'success',
+                title: 'Success!',
+                text: result.message
+            });
+            
+            // Reset form
+            document.getElementById('blog-form').reset();
+            document.getElementById('author').value = 'Admin';
+            
+            // Reload the blog list
+            loadExistingBlogs();
+        } catch (error) {
+            console.error('Error creating blog:', error);
+            Swal.fire({
+                icon: 'error',
+                title: 'Error!',
+                text: 'Failed to create the blog. Please try again.'
+            });
+        }
+    });
+    
+    // Initial load
+    loadExistingBlogs();
+</script>
+{% endblock %}

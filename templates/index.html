@@ -1,0 +1,416 @@
+{% extends "base.html" %}
+{% block title %}Blog Home{% endblock %}
+
+{% block content %}
+<section class="py-12">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <h1 class="text-4xl font-extrabold text-white mb-8">Latest Blogs</h1>
+        
+        <div id="blog-list" class="grid gap-8 md:grid-cols-2 lg:grid-cols-3 animate-on-scroll">
+            <!-- Blog cards will be inserted here by JavaScript -->
+        </div>
+        
+        <div class="text-center mt-12 animate-on-scroll">
+            <button id="load-more" class="bg-white text-indigo-600 font-medium py-3 px-6 rounded-lg shadow-lg hover:bg-indigo-50 transition duration-300">
+                Load More
+            </button>
+        </div>
+    </div>
+</section>
+
+<!-- Polling Section -->
+<section class="py-12 bg-indigo-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <h2 class="text-3xl font-extrabold text-gray-900 mb-8">Community Polls</h2>
+        
+        <!-- Create Poll Form -->
+        <div class="bg-white rounded-lg shadow-lg p-8 mb-12">
+            <h3 class="text-xl font-semibold mb-4">Create a New Poll</h3>
+            <form id="create-poll-form" class="space-y-4">
+                <div>
+                    <label for="poll-question" class="block text-sm font-medium text-gray-700 mb-1">Poll Question *</label>
+                    <input type="text" id="poll-question" name="question" required
+                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                           placeholder="What's your favorite programming language?">
+                </div>
+                <div id="poll-options-container">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Poll Options *</label>
+                    <div class="space-y-2">
+                        <input type="text" name="option[]" required
+                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                               placeholder="Option 1">
+                        <input type="text" name="option[]" required
+                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                               placeholder="Option 2">
+                    </div>
+                </div>
+                <button type="button" onclick="addPollOption()" 
+                        class="bg-gray-200 text-gray-700 px-3 py-1 rounded-md hover:bg-gray-300 text-sm">
+                    + Add Option
+                </button>
+                <button type="submit"
+                        class="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    Create Poll
+                </button>
+            </form>
+            <div id="create-poll-message" class="mt-4"></div>
+        </div>
+
+        <!-- Active Polls List -->
+        <div id="active-polls-list" class="grid gap-6 md:grid-cols-2">
+            <p class="text-gray-600 text-center py-4">Loading active polls...</p>
+        </div>
+    </div>
+</section>
+
+<!-- Comments Section on Home Page -->
+<section class="py-12 bg-gray-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <h2 class="text-3xl font-extrabold text-gray-900 mb-8">Recent Comments</h2>
+        
+        <!-- Comment Form -->
+        <div class="bg-white rounded-lg shadow-lg p-8 mb-12">
+            <h3 class="text-xl font-semibold mb-4">Leave a Comment</h3>
+            <form id="home-comment-form" class="space-y-4">
+                <div>
+                    <label for="home-blog-id" class="block text-sm font-medium text-gray-700 mb-1">Blog ID *</label>
+                    <input type="number" id="home-blog-id" name="blog_id" required
+                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                           placeholder="Enter the blog ID you want to comment on">
+                </div>
+                <div>
+                    <label for="home-author-name" class="block text-sm font-medium text-gray-700 mb-1">Name *</label>
+                    <input type="text" id="home-author-name" name="author_name" required
+                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                           placeholder="Your name">
+                </div>
+                <div>
+                    <label for="home-author-email" class="block text-sm font-medium text-gray-700 mb-1">Email (optional)</label>
+                    <input type="email" id="home-author-email" name="email"
+                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                           placeholder="Your email">
+                </div>
+                <div>
+                    <label for="home-comment-content" class="block text-sm font-medium text-gray-700 mb-1">Comment *</label>
+                    <textarea id="home-comment-content" name="content" rows="4" required
+                              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                              placeholder="Write your comment here..."></textarea>
+                </div>
+                <button type="submit"
+                        class="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    Post Comment
+                </button>
+            </form>
+            <div id="home-comment-message" class="mt-4"></div>
+        </div>
+        
+        <!-- Recent Comments List -->
+        <div id="recent-comments-list" class="space-y-6">
+            <p class="text-gray-600 text-center py-4">Loading recent comments...</p>
+        </div>
+    </div>
+</section>
+
+<script>
+    async function loadBlogs() {
+        try {
+            const response = await fetch('/api/blogs');
+            if (!response.ok) throw new Error('Failed to fetch blogs');
+            
+            const blogs = await response.json();
+            const container = document.getElementById('blog-list');
+            
+            if (blogs.length === 0) {
+                container.innerHTML = '<p class="text-white text-center py-12">No blogs found.</p>';
+                return;
+            }
+            
+            blogs.forEach(blog => {
+                const card = document.createElement('div');
+                card.className = 'bg-white rounded-lg overflow-hidden shadow-lg blog-card';
+                card.innerHTML = `
+                    <div class="p-6">
+                        <h2 class="text-xl font-bold text-indigo-600 mb-2">${blog.title}</h2>
+                        <p class="text-gray-600 text-sm mb-2">By ${blog.author} • ${new Date(blog.date_created).toLocaleDateString()}</p>
+                        <p class="text-gray-700 mb-4">${blog.summary}</p>
+                        <a href="/blogs/${blog.id}" class="text-indigo-600 hover:text-indigo-800 font-medium flex items-center">
+                            Read more <i class="fas fa-arrow-right ml-2"></i>
+                        </a>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        } catch (error) {
+            console.error('Error loading blogs:', error);
+            document.getElementById('blog-list').innerHTML = `
+                <div class="bg-white rounded-lg p-6 text-center text-red-600">
+                    <p>Failed to load blogs. Please try again later.</p>
+                </div>
+            `;
+        }
+    }
+
+    async function loadRecentComments() {
+        try {
+            const response = await fetch('/api/comments/recent');
+            if (!response.ok) throw new Error('Failed to fetch recent comments');
+            
+            const comments = await response.json();
+            const container = document.getElementById('recent-comments-list');
+            
+            if (comments.length === 0) {
+                container.innerHTML = '<p class="text-gray-600 text-center py-4">No recent comments found.</p>';
+                return;
+            }
+            
+            container.innerHTML = comments.map(comment => `
+                <div class="bg-white rounded-lg shadow p-4">
+                    <p class="text-gray-800"><strong>${comment.author_name}</strong> on <em>${comment.blog_title}</em></p>
+                    <p class="text-gray-700">${comment.content}</p>
+                    <p class="text-gray-500 text-sm">${new Date(comment.date_created).toLocaleString()}</p>
+                </div>
+            `).join('');
+        } catch (error) {
+            console.error('Error loading recent comments:', error);
+            document.getElementById('recent-comments-list').innerHTML = `
+                <p class="text-red-600 text-center">Failed to load recent comments. Please try again later.</p>
+            `;
+        }
+    }
+
+    document.getElementById('load-more').addEventListener('click', () => {
+        Swal.fire({
+            icon: 'info',
+            title: 'Pagination Coming Soon',
+            text: 'This feature will be implemented in a future update'
+        });
+    });
+
+    document.getElementById('home-comment-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const formData = new FormData(e.target);
+        const commentData = {
+            blog_id: formData.get('blog_id'),
+            author_name: formData.get('author_name'),
+            email: formData.get('email'),
+            content: formData.get('content')
+        };
+        
+        try {
+            const response = await fetch('/api/comments', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(commentData)
+            });
+            
+            const result = await response.json();
+            
+            const messageDiv = document.getElementById('home-comment-message');
+            if (response.ok) {
+                e.target.reset();
+                messageDiv.innerHTML = `
+                    <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded">
+                        Comment posted successfully!
+                    </div>
+                `;
+                // Reload recent comments after posting
+                await loadRecentComments();
+                setTimeout(() => {
+                    messageDiv.innerHTML = '';
+                }, 3000);
+            } else {
+                messageDiv.innerHTML = `
+                    <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+                        ${result.error || 'Failed to post comment'}
+                    </div>
+                `;
+            }
+        } catch (error) {
+            console.error('Error posting comment:', error);
+            document.getElementById('home-comment-message').innerHTML = `
+                <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+                    Failed to post comment. Please try again.
+                </div>
+            `;
+        }
+    });
+
+    // Initial load
+    loadBlogs();
+    loadRecentComments();
+    loadActivePolls();
+
+    // Polling System Functions
+    let pollOptionCount = 2;
+
+    function addPollOption() {
+        pollOptionCount++;
+        const container = document.getElementById('poll-options-container');
+        const newOption = document.createElement('div');
+        newOption.innerHTML = `
+            <input type="text" name="option[]" required
+                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                   placeholder="Option ${pollOptionCount}">
+        `;
+        container.querySelector('.space-y-2').appendChild(newOption);
+    }
+
+    async function loadActivePolls() {
+        try {
+            const response = await fetch('/api/polls');
+            if (!response.ok) throw new Error('Failed to fetch polls');
+            
+            const polls = await response.json();
+            const container = document.getElementById('active-polls-list');
+            
+            if (polls.length === 0) {
+                container.innerHTML = '<p class="text-gray-600 text-center py-4">No active polls found. Create one above!</p>';
+                return;
+            }
+            
+            container.innerHTML = polls.map(poll => `
+                <div class="bg-white rounded-lg shadow-lg p-6">
+                    <h3 class="text-lg font-semibold text-indigo-600 mb-3">${poll.question}</h3>
+                    <div class="space-y-2 mb-4">
+                        ${poll.options.map((option, index) => `
+                            <div class="flex items-center justify-between">
+                                <label class="flex items-center">
+                                    <input type="radio" name="poll-${poll.id}" value="${index}" 
+                                           class="mr-2 text-indigo-600 focus:ring-indigo-500">
+                                    <span class="text-gray-700">${option}</span>
+                                </label>
+                                <span class="text-sm text-gray-500">${poll.votes[index] || 0} votes</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                    <button onclick="voteOnPoll(${poll.id})" 
+                            class="w-full bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 transition duration-300">
+                        Vote
+                    </button>
+                </div>
+            `).join('');
+        } catch (error) {
+            console.error('Error loading polls:', error);
+            document.getElementById('active-polls-list').innerHTML = `
+                <p class="text-red-600 text-center">Failed to load polls. Please try again later.</p>
+            `;
+        }
+    }
+
+    async function voteOnPoll(pollId) {
+        const selectedOption = document.querySelector(`input[name="poll-${pollId}"]:checked`);
+        if (!selectedOption) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'No Selection',
+                text: 'Please select an option before voting'
+            });
+            return;
+        }
+
+        try {
+            const response = await fetch(`/api/polls/${pollId}/vote`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ option_index: parseInt(selectedOption.value) })
+            });
+
+            const result = await response.json();
+            
+            if (response.ok) {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Vote Cast!',
+                    text: 'Thank you for your vote'
+                });
+                loadActivePolls(); // Reload to show updated results
+            } else {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Vote Failed',
+                    text: result.error || 'Unable to cast vote'
+                });
+            }
+        } catch (error) {
+            console.error('Error voting:', error);
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: 'Failed to cast vote. Please try again.'
+            });
+        }
+    }
+
+    document.getElementById('create-poll-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const formData = new FormData(e.target);
+        const question = formData.get('question');
+        const options = formData.getAll('option[]').filter(option => option.trim() !== '');
+        
+        if (options.length < 2) {
+            document.getElementById('create-poll-message').innerHTML = `
+                <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+                    Please provide at least 2 options for the poll
+                </div>
+            `;
+            return;
+        }
+
+        try {
+            const response = await fetch('/api/polls', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ question, options })
+            });
+
+            const result = await response.json();
+            
+            if (response.ok) {
+                document.getElementById('create-poll-message').innerHTML = `
+                    <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded">
+                        Poll created successfully!
+                    </div>
+                `;
+                e.target.reset();
+                pollOptionCount = 2;
+                document.getElementById('poll-options-container').innerHTML = `
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Poll Options *</label>
+                    <div class="space-y-2">
+                        <input type="text" name="option[]" required
+                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                               placeholder="Option 1">
+                        <input type="text" name="option[]" required
+                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                               placeholder="Option 2">
+                    </div>
+                `;
+                loadActivePolls(); // Reload to show new poll
+                setTimeout(() => {
+                    document.getElementById('create-poll-message').innerHTML = '';
+                }, 3000);
+            } else {
+                document.getElementById('create-poll-message').innerHTML = `
+                    <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+                        ${result.error || 'Failed to create poll'}
+                    </div>
+                `;
+            }
+        } catch (error) {
+            console.error('Error creating poll:', error);
+            document.getElementById('create-poll-message').innerHTML = `
+                <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+                    Failed to create poll. Please try again.
+                </div>
+            `;
+        }
+    });
+</script>
+{% endblock %}
